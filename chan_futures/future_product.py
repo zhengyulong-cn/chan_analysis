@@ -6,6 +6,7 @@ from chan_core.analysis import (
     getOperateDirection,
     buildChanPens,
     buildChanCentral,
+    MACD,
 )
 import numpy as np
 
@@ -29,7 +30,7 @@ class FutureProduct:
         self.analysisDirect()
         self.analysisChanPens()
         self.analysisChanCentral()
-        # self.analysisChanBuyingSellingPoints()
+        self.analysisMACD()
 
     def analysisMA(self):
         self.histPrice["MA5"] = getMA(self.histPrice, stage=5)
@@ -39,6 +40,32 @@ class FutureProduct:
         self.histPrice["MA80"] = getMA(self.histPrice, stage=80)
         self.histPrice["MA160"] = getMA(self.histPrice, stage=160)
         self.histPrice["MA320"] = getMA(self.histPrice, stage=320)
+
+    def analysisMACD(self):
+        macdFastLine20, macdSlowLine20, macdList20 = MACD(
+            self.histPrice["close"], 10, 20, 5
+        )
+        self.macd20 = {
+            "fastLine": macdFastLine20,
+            "slowLine": macdSlowLine20,
+            "macdList": macdList20,
+        }
+        macdFastLine80, macdSlowLine80, macdList80 = MACD(
+            self.histPrice["close"], 40, 80, 20
+        )
+        self.macd80 = {
+            "fastLine": macdFastLine80,
+            "slowLine": macdSlowLine80,
+            "macdList": macdList80,
+        }
+        macdFastLine320, macdSlowLine320, macdList320 = MACD(
+            self.histPrice["close"], 160, 320, 80
+        )
+        self.macd320 = {
+            "fastLine": macdFastLine320,
+            "slowLine": macdSlowLine320,
+            "macdList": macdList320,
+        }
 
     def analysisDirect(self):
         self.histPrice["a0Direct"] = None
@@ -112,6 +139,42 @@ class FutureProduct:
                     cleanedRow[key] = row[key]
             cleanedRowList.append(cleanedRow)
         plainData["kLineList"] = cleanedRowList
+        # 格式化20、80、320级别的MACD
+        plainData["MACD"] = {
+            "macd20": {
+                "fastLine": [
+                    None if np.isnan(x) else x for x in self.macd20["fastLine"]
+                ],
+                "slowLine": [
+                    None if np.isnan(x) else x for x in self.macd20["slowLine"]
+                ],
+                "macdList": [
+                    None if np.isnan(x) else x for x in self.macd20["macdList"]
+                ],
+            },
+            "macd80": {
+                "fastLine": [
+                    None if np.isnan(x) else x for x in self.macd80["fastLine"]
+                ],
+                "slowLine": [
+                    None if np.isnan(x) else x for x in self.macd80["slowLine"]
+                ],
+                "macdList": [
+                    None if np.isnan(x) else x for x in self.macd80["macdList"]
+                ],
+            },
+            "macd320": {
+                "fastLine": [
+                    None if np.isnan(x) else x for x in self.macd320["fastLine"]
+                ],
+                "slowLine": [
+                    None if np.isnan(x) else x for x in self.macd320["slowLine"]
+                ],
+                "macdList": [
+                    None if np.isnan(x) else x for x in self.macd320["macdList"]
+                ],
+            },
+        }
         plainData["chanPens"] = {
             "a0PenPointList": self.a0PenPointList,
             "a1PenPointList": self.a1PenPointList,
