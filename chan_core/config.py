@@ -19,6 +19,7 @@ FUTURE_INSTRUMENTS = [
     # "SR0",
 ]
 
+
 class KLineLevel(Enum):
     Level_15M = 15
     Level_60M = 60

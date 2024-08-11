@@ -7,15 +7,21 @@ from chan_core.analysis import (
     buildChanPens,
     buildChanCentral,
 )
+import numpy as np
 
 
 class FutureProduct:
     symbol = ""
+    period = KLineLevel.Level_15M
     histPrice: pd.DataFrame = None
 
     def __init__(self, symbol: str, period: KLineLevel) -> None:
         self.symbol = symbol
-        self.histPrice = ak.futures_zh_minute_sina(symbol=self.symbol, period=period)
+        self.period = period
+        self.histPrice = ak.futures_zh_minute_sina(
+            symbol=self.symbol,
+            period=str(period),
+        )
         self.analysis()
 
     def analysis(self):
@@ -91,9 +97,21 @@ class FutureProduct:
         ]
         histPrice = self.histPrice.loc[:, plainColumns]
         plainData["symbol"] = self.symbol
+        plainData["period"] = self.period
         plainData["headers"] = plainColumns
-        plainData["rowCount"] = histPrice.shape[0]
-        plainData["rows"] = histPrice.to_dict(orient="records")
+        plainData["kLineListCount"] = histPrice.shape[0]
+        # np.nan类型序列化时候需要特殊处理，转换为None才能被json序列化
+        rowList = histPrice.to_dict(orient="records")
+        cleanedRowList = []
+        for row in rowList:
+            cleanedRow = {}
+            for key in row.keys():
+                if type(row[key]) in [int, float] and np.isnan(row[key]):
+                    cleanedRow[key] = None
+                else:
+                    cleanedRow[key] = row[key]
+            cleanedRowList.append(cleanedRow)
+        plainData["kLineList"] = cleanedRowList
         plainData["chanPens"] = {
             "a0PenPointList": self.a0PenPointList,
             "a1PenPointList": self.a1PenPointList,

@@ -1,8 +1,12 @@
 <script setup>
+import Layout from "./layouts/Layout.vue";
 </script>
 
 <template>
-    <div>App</div>
+  <Layout>
+    <template v-slot:layoutContent>
+      <router-view />
+    </template>
+  </Layout>
 </template>
-<style scoped>
-</style>
+<style scoped></style>
