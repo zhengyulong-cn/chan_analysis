@@ -36,19 +36,10 @@ def getPenMaxMinPrice(
     startIdx: int,
     endIdx: int,
     direct: int,
-    nearCheckDelta: int,
 ):
     if direct == 1:
         lowMinPrice = histPrice.iloc[startIdx:endIdx]["low"].min()
         lowMinPriceIdx = histPrice.iloc[startIdx:endIdx]["low"].idxmin()
-        nesarLowMinPrice = histPrice[lowMinPriceIdx - nearCheckDelta : lowMinPriceIdx][
-            "low"
-        ].min()
-        if nesarLowMinPrice < lowMinPrice:
-            lowMinPrice = nesarLowMinPrice
-            lowMinPriceIdx = histPrice[
-                lowMinPriceIdx - nearCheckDelta : lowMinPriceIdx
-            ]["low"].idxmin()
         return {
             "price": lowMinPrice,
             "priceIdx": lowMinPriceIdx,
@@ -58,14 +49,6 @@ def getPenMaxMinPrice(
     elif direct == -1:
         highMaxPrice = histPrice.iloc[startIdx:endIdx]["high"].max()
         highMaxPriceIdx = histPrice.iloc[startIdx:endIdx]["high"].idxmax()
-        nesarHighMaxPrice = histPrice[
-            highMaxPriceIdx - nearCheckDelta : highMaxPriceIdx
-        ]["high"].max()
-        if nesarHighMaxPrice > highMaxPrice:
-            highMaxPrice = nesarHighMaxPrice
-            highMaxPriceIdx = histPrice[
-                highMaxPriceIdx - nearCheckDelta : highMaxPriceIdx
-            ]["high"].idxmax()
         return {
             "price": highMaxPrice,
             "priceIdx": highMaxPriceIdx,
@@ -95,44 +78,38 @@ def buildChanPens(histPrice: pd.DataFrame, *, type: str):
         "A1": "a1Direct",
         "A2": "a2Direct",
     }
-    mapNearCheckDelta = {
-        "A0": 10,
-        "A1": 40,
-        "A2": 160,
-    }
     directColData = histPrice[mapType2Col[type]]
     penDirect = 0
-    penSwitchList = []
+    # 笔判断条件切换的点位
+    switchList = []
     for i, curDirect in enumerate(directColData):
         if curDirect == 1 and penDirect != 1:
             penDirect = 1
-            penSwitchList.append((i, penDirect))
+            switchList.append((i, penDirect))
         if curDirect == -1 and penDirect != -1:
             penDirect = -1
-            penSwitchList.append((i, penDirect))
-    penPointList = []
-    for i, curPen in enumerate(penSwitchList):
+            switchList.append((i, penDirect))
+    penList = []
+    for i in range(len(switchList)):
+        curSwitch = switchList[i]
+        endIdx = curSwitch[0]
+        direct = curSwitch[1]
         if i == 0:
-            priceObj = getPenMaxMinPrice(
-                histPrice, 0, curPen[0], curPen[1], mapNearCheckDelta[type]
-            )
-            penPointList.append(priceObj)
+            priceObj = getPenMaxMinPrice(histPrice, 0, endIdx, direct)
+            penList.append(priceObj)
         else:
-            prePen = penSwitchList[i - 1]
+            lastPriceObj = penList[len(penList) - 1]
+            startIdx = lastPriceObj["priceIdx"]
+            priceObj = getPenMaxMinPrice(histPrice, startIdx, endIdx, direct)
+            penList.append(priceObj)
+        if i == len(switchList) - 1:
+            lastPriceObj = penList[len(penList) - 1]
+            startIdx = lastPriceObj["priceIdx"]
             priceObj = getPenMaxMinPrice(
-                histPrice, prePen[0], curPen[0], curPen[1], mapNearCheckDelta[type]
+                histPrice, startIdx, len(histPrice), direct * -1
             )
-            penPointList.append(priceObj)
-        if i == len(penSwitchList) - 1:
-            priceObj = getPenMaxMinPrice(
-                histPrice,
-                curPen[0],
-                len(histPrice),
-                1 if curPen[1] == -1 else -1,
-                mapNearCheckDelta[type],
-            )
-            penPointList.append(priceObj)
-    return penPointList
+            penList.append(priceObj)
+    return penList
 
 
 def mergeCentralList(centralList):
