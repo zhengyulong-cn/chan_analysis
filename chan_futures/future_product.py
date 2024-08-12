@@ -45,27 +45,21 @@ class FutureProduct:
         macdFastLine20, macdSlowLine20, macdList20 = MACD(
             self.histPrice["close"], 10, 20, 5
         )
-        self.macd20 = {
-            "fastLine": macdFastLine20,
-            "slowLine": macdSlowLine20,
-            "macdList": macdList20,
-        }
         macdFastLine80, macdSlowLine80, macdList80 = MACD(
             self.histPrice["close"], 40, 80, 20
         )
-        self.macd80 = {
-            "fastLine": macdFastLine80,
-            "slowLine": macdSlowLine80,
-            "macdList": macdList80,
-        }
         macdFastLine320, macdSlowLine320, macdList320 = MACD(
             self.histPrice["close"], 160, 320, 80
         )
-        self.macd320 = {
-            "fastLine": macdFastLine320,
-            "slowLine": macdSlowLine320,
-            "macdList": macdList320,
-        }
+        self.histPrice["macdFastLine20"] = macdFastLine20
+        self.histPrice["macdSlowLine20"] = macdSlowLine20
+        self.histPrice["macdList20"] = macdList20
+        self.histPrice["macdFastLine80"] = macdFastLine80
+        self.histPrice["macdSlowLine80"] = macdSlowLine80
+        self.histPrice["macdList80"] = macdList80
+        self.histPrice["macdFastLine320"] = macdFastLine320
+        self.histPrice["macdSlowLine320"] = macdSlowLine320
+        self.histPrice["macdList320"] = macdList320
 
     def analysisDirect(self):
         self.histPrice["a0Direct"] = None
@@ -104,6 +98,19 @@ class FutureProduct:
             bigPenPointList=self.a2PenPointList,
         )
 
+    def getCleanedData(self, rowList):
+        # np.nan类型序列化时候需要特殊处理，转换为None才能被json序列化
+        cleanedRowList = []
+        for row in rowList:
+            cleanedRow = {}
+            for key in row.keys():
+                if type(row[key]) in [int, float] and np.isnan(row[key]):
+                    cleanedRow[key] = None
+                else:
+                    cleanedRow[key] = row[key]
+            cleanedRowList.append(cleanedRow)
+        return cleanedRowList
+
     def getPlainData(self):
         plainData = {}
         plainColumns = [
@@ -127,54 +134,26 @@ class FutureProduct:
         plainData["period"] = self.period
         plainData["headers"] = plainColumns
         plainData["kLineListCount"] = histPrice.shape[0]
-        # np.nan类型序列化时候需要特殊处理，转换为None才能被json序列化
-        rowList = histPrice.to_dict(orient="records")
-        cleanedRowList = []
-        for row in rowList:
-            cleanedRow = {}
-            for key in row.keys():
-                if type(row[key]) in [int, float] and np.isnan(row[key]):
-                    cleanedRow[key] = None
-                else:
-                    cleanedRow[key] = row[key]
-            cleanedRowList.append(cleanedRow)
-        plainData["kLineList"] = cleanedRowList
+        plainData["kLineList"] = self.getCleanedData(
+            histPrice.to_dict(orient="records")
+        )
         # 格式化20、80、320级别的MACD
-        plainData["MACD"] = {
-            "macd20": {
-                "fastLine": [
-                    None if np.isnan(x) else x for x in self.macd20["fastLine"]
-                ],
-                "slowLine": [
-                    None if np.isnan(x) else x for x in self.macd20["slowLine"]
-                ],
-                "macdList": [
-                    None if np.isnan(x) else x for x in self.macd20["macdList"]
-                ],
-            },
-            "macd80": {
-                "fastLine": [
-                    None if np.isnan(x) else x for x in self.macd80["fastLine"]
-                ],
-                "slowLine": [
-                    None if np.isnan(x) else x for x in self.macd80["slowLine"]
-                ],
-                "macdList": [
-                    None if np.isnan(x) else x for x in self.macd80["macdList"]
-                ],
-            },
-            "macd320": {
-                "fastLine": [
-                    None if np.isnan(x) else x for x in self.macd320["fastLine"]
-                ],
-                "slowLine": [
-                    None if np.isnan(x) else x for x in self.macd320["slowLine"]
-                ],
-                "macdList": [
-                    None if np.isnan(x) else x for x in self.macd320["macdList"]
-                ],
-            },
-        }
+        macdPrice = self.histPrice.loc[
+            :,
+            [
+                "datetime",
+                "macdFastLine20",
+                "macdSlowLine20",
+                "macdList20",
+                "macdFastLine80",
+                "macdSlowLine80",
+                "macdList80",
+                "macdFastLine320",
+                "macdSlowLine320",
+                "macdList320",
+            ],
+        ]
+        plainData["macd"] = self.getCleanedData(macdPrice.to_dict(orient="records"))
         plainData["chanPens"] = {
             "a0PenPointList": self.a0PenPointList,
             "a1PenPointList": self.a1PenPointList,

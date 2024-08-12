@@ -5,7 +5,6 @@ import FuturesItem from "@/components/FuturesItem.vue";
 <template>
   <div class="pageBox">
     <FuturesItem />
-    <!-- <FuturesItem /> -->
   </div>
 </template>
 
@@ -16,5 +15,6 @@ import FuturesItem from "@/components/FuturesItem.vue";
   border-radius: 1rem;
   padding: 1rem;
   max-height: calc(100% - 2rem);
+  height: 100%;
 }
 </style>

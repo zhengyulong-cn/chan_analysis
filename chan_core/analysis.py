@@ -3,8 +3,10 @@ import pandas as pd
 import talib
 from typing import List
 
+
 def getMA(histPrice: pd.DataFrame, *, stage: int):
     return talib.MA(histPrice["close"], stage)
+
 
 def getOperateDirection(histPrice: pd.DataFrame, *, stage: int, offset: int):
     """
@@ -16,41 +18,63 @@ def getOperateDirection(histPrice: pd.DataFrame, *, stage: int, offset: int):
     compareIdx = -2 - offset
     if abs(compareIdx) > len(histPrice):
         return 0
-    if MAX_4.iloc[compareIdx] > MAX.iloc[compareIdx] and MAX_2.iloc[compareIdx] > MAX.iloc[compareIdx]:
+    if (
+        MAX_4.iloc[compareIdx] > MAX.iloc[compareIdx]
+        and MAX_2.iloc[compareIdx] > MAX.iloc[compareIdx]
+    ):
         return 1
-    elif MAX_4.iloc[compareIdx] < MAX.iloc[compareIdx] and MAX_2.iloc[compareIdx] < MAX.iloc[compareIdx]:
+    elif (
+        MAX_4.iloc[compareIdx] < MAX.iloc[compareIdx]
+        and MAX_2.iloc[compareIdx] < MAX.iloc[compareIdx]
+    ):
         return -1
     return 0
 
-def getPenMaxMinPrice(histPrice: pd.DataFrame, startIdx: int, endIdx: int, direct: int, nearCheckDelta: int):
+
+def getPenMaxMinPrice(
+    histPrice: pd.DataFrame,
+    startIdx: int,
+    endIdx: int,
+    direct: int,
+    nearCheckDelta: int,
+):
     if direct == 1:
-        lowMinPrice = histPrice.iloc[startIdx: endIdx]["low"].min()
-        lowMinPriceIdx = histPrice.iloc[startIdx: endIdx]["low"].idxmin()
-        nesarLowMinPrice = histPrice[lowMinPriceIdx - nearCheckDelta: lowMinPriceIdx]["low"].min()
+        lowMinPrice = histPrice.iloc[startIdx:endIdx]["low"].min()
+        lowMinPriceIdx = histPrice.iloc[startIdx:endIdx]["low"].idxmin()
+        nesarLowMinPrice = histPrice[lowMinPriceIdx - nearCheckDelta : lowMinPriceIdx][
+            "low"
+        ].min()
         if nesarLowMinPrice < lowMinPrice:
             lowMinPrice = nesarLowMinPrice
-            lowMinPriceIdx = histPrice[lowMinPriceIdx - nearCheckDelta: lowMinPriceIdx]["low"].idxmin()
+            lowMinPriceIdx = histPrice[
+                lowMinPriceIdx - nearCheckDelta : lowMinPriceIdx
+            ]["low"].idxmin()
         return {
             "price": lowMinPrice,
             "priceIdx": lowMinPriceIdx,
             "type": "buttom" if direct == 1 else "top",
-            "datetime": histPrice.iloc[lowMinPriceIdx]["datetime"]
+            "datetime": histPrice.iloc[lowMinPriceIdx]["datetime"],
         }
     elif direct == -1:
-        highMaxPrice = histPrice.iloc[startIdx: endIdx]["high"].max()
-        highMaxPriceIdx = histPrice.iloc[startIdx: endIdx]["high"].idxmax()
-        nesarHighMaxPrice = histPrice[highMaxPriceIdx - nearCheckDelta: highMaxPriceIdx]["high"].max()
+        highMaxPrice = histPrice.iloc[startIdx:endIdx]["high"].max()
+        highMaxPriceIdx = histPrice.iloc[startIdx:endIdx]["high"].idxmax()
+        nesarHighMaxPrice = histPrice[
+            highMaxPriceIdx - nearCheckDelta : highMaxPriceIdx
+        ]["high"].max()
         if nesarHighMaxPrice > highMaxPrice:
             highMaxPrice = nesarHighMaxPrice
-            highMaxPriceIdx = histPrice[highMaxPriceIdx - nearCheckDelta: highMaxPriceIdx]["high"].idxmax()
+            highMaxPriceIdx = histPrice[
+                highMaxPriceIdx - nearCheckDelta : highMaxPriceIdx
+            ]["high"].idxmax()
         return {
             "price": highMaxPrice,
             "priceIdx": highMaxPriceIdx,
             "type": "buttom" if direct == 1 else "top",
-            "datetime": histPrice.iloc[highMaxPriceIdx]["datetime"]
+            "datetime": histPrice.iloc[highMaxPriceIdx]["datetime"],
         }
     else:
         raise ValueError("direct的值不可能为0，请检查输入数据")
+
 
 def buildChanPens(histPrice: pd.DataFrame, *, type: str):
     """
@@ -89,16 +113,27 @@ def buildChanPens(histPrice: pd.DataFrame, *, type: str):
     penPointList = []
     for i, curPen in enumerate(penSwitchList):
         if i == 0:
-            priceObj = getPenMaxMinPrice(histPrice, 0, curPen[0], curPen[1], mapNearCheckDelta[type])
+            priceObj = getPenMaxMinPrice(
+                histPrice, 0, curPen[0], curPen[1], mapNearCheckDelta[type]
+            )
             penPointList.append(priceObj)
         else:
             prePen = penSwitchList[i - 1]
-            priceObj = getPenMaxMinPrice(histPrice, prePen[0], curPen[0], curPen[1], mapNearCheckDelta[type])
+            priceObj = getPenMaxMinPrice(
+                histPrice, prePen[0], curPen[0], curPen[1], mapNearCheckDelta[type]
+            )
             penPointList.append(priceObj)
         if i == len(penSwitchList) - 1:
-            priceObj = getPenMaxMinPrice(histPrice, curPen[0], len(histPrice), 1 if curPen[1] == -1 else -1, mapNearCheckDelta[type])
+            priceObj = getPenMaxMinPrice(
+                histPrice,
+                curPen[0],
+                len(histPrice),
+                1 if curPen[1] == -1 else -1,
+                mapNearCheckDelta[type],
+            )
             penPointList.append(priceObj)
     return penPointList
+
 
 def mergeCentralList(centralList):
     """
@@ -123,16 +158,19 @@ def mergeCentralList(centralList):
             last = mergedList.pop()
             new_idx_range = [
                 min(last['idxRange'][0], interval['idxRange'][0]),
-                max(last['idxRange'][1], interval['idxRange'][1])
+                max(last['idxRange'][1], interval['idxRange'][1]),
             ]
             new_price_range = [
                 min(last['priceRange'][0], interval['priceRange'][0]),
-                max(last['priceRange'][1], interval['priceRange'][1])
+                max(last['priceRange'][1], interval['priceRange'][1]),
             ]
-            mergedList.append({'idxRange': new_idx_range, 'priceRange': new_price_range})
+            mergedList.append(
+                {'idxRange': new_idx_range, 'priceRange': new_price_range}
+            )
         else:
             print("特殊情况：X轴重叠但Y轴不重叠")
     return mergedList
+
 
 def getNextBigPenDirect(startIdx: int, endIdx: int, bigPenPointList: list):
     for i, curPenPoint in enumerate(bigPenPointList):
@@ -145,6 +183,7 @@ def getNextBigPenDirect(startIdx: int, endIdx: int, bigPenPointList: list):
             else:
                 return 1
     return 0
+
 
 def buildChanCentral(*, penPointList, bigPenPointList):
     """
@@ -172,24 +211,43 @@ def buildChanCentral(*, penPointList, bigPenPointList):
         curPointIdx = curPoint["priceIdx"]
         fourth2LastPointIdx = fourth2LastPoint["priceIdx"]
 
-        bigDirect = getNextBigPenDirect(fourth2LastPointIdx, curPointIdx, bigPenPointList)
+        bigDirect = getNextBigPenDirect(
+            fourth2LastPointIdx, curPointIdx, bigPenPointList
+        )
         if bigDirect == 1:
-            if curPoint["price"] < fourth2LastPoint["price"] and second2LastPoint["price"] > third2LastPoint["price"]:
+            if (
+                curPoint["price"] < fourth2LastPoint["price"]
+                and second2LastPoint["price"] > third2LastPoint["price"]
+            ):
                 price = min(second2LastPoint["price"], fourth2LastPoint["price"])
                 minMaxPrice = max(curPoint["price"], third2LastPoint["price"])
-                centralList.append({
-                    "idxRange": [fourth2LastPoint["priceIdx"], curPoint["priceIdx"]],
-                    "priceRange": [minMaxPrice, price],
-                })
+                centralList.append(
+                    {
+                        "idxRange": [
+                            fourth2LastPoint["priceIdx"],
+                            curPoint["priceIdx"],
+                        ],
+                        "priceRange": [minMaxPrice, price],
+                    }
+                )
         if bigDirect == -1:
-            if curPoint["price"] > fourth2LastPoint["price"] and second2LastPoint["price"] < third2LastPoint["price"]:
+            if (
+                curPoint["price"] > fourth2LastPoint["price"]
+                and second2LastPoint["price"] < third2LastPoint["price"]
+            ):
                 price = min(curPoint["price"], third2LastPoint["price"])
                 minMaxPrice = max(second2LastPoint["price"], fourth2LastPoint["price"])
-                centralList.append({
-                    "idxRange": [fourth2LastPoint["priceIdx"], curPoint["priceIdx"]],
-                    "priceRange": [minMaxPrice, price],
-                })
+                centralList.append(
+                    {
+                        "idxRange": [
+                            fourth2LastPoint["priceIdx"],
+                            curPoint["priceIdx"],
+                        ],
+                        "priceRange": [minMaxPrice, price],
+                    }
+                )
     return mergeCentralList(centralList)
+
 
 def buildChanBuyingSellingPoints(*, penPointList, centralList, bigPenPointList):
     buyingSellingPointsList = []
@@ -208,18 +266,66 @@ def buildChanBuyingSellingPoints(*, penPointList, centralList, bigPenPointList):
             if bigStartIdx <= curIdx and curIdx <= bigEndIdx:
                 if bigDirect == 1 and curType == "buttom":
                     if not intervalList:
-                        intervalList.append({ "type": 1, "label": "一买", "priceIdx": curIdx, "price": curPrice, "datetime":  curPoint["datetime"]})
+                        intervalList.append(
+                            {
+                                "type": 1,
+                                "label": "一买",
+                                "priceIdx": curIdx,
+                                "price": curPrice,
+                                "datetime": curPoint["datetime"],
+                            }
+                        )
                     elif len(intervalList) == 1:
-                        intervalList.append({ "type": 2, "label": "二买", "priceIdx": curIdx, "price": curPrice, "datetime":  curPoint["datetime"]})
+                        intervalList.append(
+                            {
+                                "type": 2,
+                                "label": "二买",
+                                "priceIdx": curIdx,
+                                "price": curPrice,
+                                "datetime": curPoint["datetime"],
+                            }
+                        )
                     else:
-                        intervalList.append({ "type": 3, "label": "三买", "priceIdx": curIdx, "price": curPrice, "datetime":  curPoint["datetime"]})
+                        intervalList.append(
+                            {
+                                "type": 3,
+                                "label": "三买",
+                                "priceIdx": curIdx,
+                                "price": curPrice,
+                                "datetime": curPoint["datetime"],
+                            }
+                        )
                 if bigDirect == -1 and curType == "top":
                     if not intervalList:
-                        intervalList.append({ "type": -1, "label": "一卖", "priceIdx": curIdx, "price": curPrice, "datetime":  curPoint["datetime"]})
+                        intervalList.append(
+                            {
+                                "type": -1,
+                                "label": "一卖",
+                                "priceIdx": curIdx,
+                                "price": curPrice,
+                                "datetime": curPoint["datetime"],
+                            }
+                        )
                     elif len(intervalList) == 1:
-                        intervalList.append({ "type": -2, "label": "二卖", "priceIdx": curIdx, "price": curPrice, "datetime":  curPoint["datetime"]})
+                        intervalList.append(
+                            {
+                                "type": -2,
+                                "label": "二卖",
+                                "priceIdx": curIdx,
+                                "price": curPrice,
+                                "datetime": curPoint["datetime"],
+                            }
+                        )
                     else:
-                        intervalList.append({ "type": -3, "label": "三卖", "priceIdx": curIdx, "price": curPrice, "datetime":  curPoint["datetime"]})
+                        intervalList.append(
+                            {
+                                "type": -3,
+                                "label": "三卖",
+                                "priceIdx": curIdx,
+                                "price": curPrice,
+                                "datetime": curPoint["datetime"],
+                            }
+                        )
         buyingSellingPointsList.append(intervalList)
     return buyingSellingPointsList
 
@@ -227,10 +333,13 @@ def buildChanBuyingSellingPoints(*, penPointList, centralList, bigPenPointList):
 def MACD(data, fast_period=10, slow_period=20, singal_period=5):
     fastMA = talib.MA(data, fast_period)
     slowMA = talib.MA(data, slow_period)
-    macdLine: List[float] = np.array(fastMA, dtype=float) - np.array(slowMA, dtype=float)
+    macdLine: List[float] = np.array(fastMA, dtype=float) - np.array(
+        slowMA, dtype=float
+    )
     signalLine = talib.MA(macdLine, singal_period)
-    macdList = macdLine - np.array(signalLine)
+    macdList = (macdLine - np.array(signalLine)) * 2
     return macdLine, signalLine, macdList
+
 
 def checkMACDCross(histPrice, stage: int):
     """
@@ -263,6 +372,7 @@ def checkMACDCross(histPrice, stage: int):
             diffZeroAxis = 1
     return (crossType, diffZeroAxis)
 
+
 def operateWarn(direct_20: int, direct_80: int, direct_320: int) -> int:
     """
     为±2表示1h和4h趋势方向一致，15min回调
@@ -281,6 +391,7 @@ def operateWarn(direct_20: int, direct_80: int, direct_320: int) -> int:
             return 1
     else:
         return 0
+
 
 def macdCrossWarn(corssType: int, diffZeroAxis: int):
     """

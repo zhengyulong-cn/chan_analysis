@@ -16,4 +16,5 @@ export const futuresProductList = [
   { label: "纯碱主连", value: "SA0" },
   { label: "锰硅主连", value: "SM0" },
   { label: "白银主连", value: "AG0" },
-]
+  { label: "豆油主连", value: "Y0" },
+];

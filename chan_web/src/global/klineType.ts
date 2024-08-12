@@ -1,18 +1,32 @@
 import { KLineLevelEnum } from "./constants/futures";
+import { Time } from "lightweight-charts";
 
 export interface IKLine {
   high: number;
   low: number;
   open: number;
   close: number;
-  time: string | number;
-  MA5: number;
-  MA10: number;
-  MA20: number;
-  MA40: number;
-  MA80: number;
-  MA160: number;
-  MA320: number;
+  time: Time;
+  MA5: number | null;
+  MA10: number | null;
+  MA20: number | null;
+  MA40: number | null;
+  MA80: number | null;
+  MA160: number | null;
+  MA320: number | null;
+}
+
+export interface IKLineItem {
+  time: Time;
+  macdFastLine20: number | null;
+  macdFastLine80: number | null;
+  macdFastLine320: number | null;
+  macdList20: number | null;
+  macdList80: number | null;
+  macdList320: number | null;
+  macdSlowLine20: number | null;
+  macdSlowLine80: number | null;
+  macdSlowLine320: number | null;
 }
 
 export interface IKLineData {
@@ -21,6 +35,7 @@ export interface IKLineData {
   headers: Array<string>;
   kLineListCount: number;
   kLineList: Array<IKLine>;
-  chanPens: Record<string, any>;
+  chanPens: Record<"a0PenPointList" | "a1PenPointList" | "a2PenPointList", any[]>;
   chanCentral: Record<string, any>;
+  macd: Array<IKLineItem>;
 }

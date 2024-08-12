@@ -1,13 +1,11 @@
 <script lang="ts" setup>
-import { onMounted, reactive, watch } from "vue";
+import { onMounted, onUnmounted, reactive, watch } from "vue";
 import { KLineLevelEnum, kLineLevelList, futuresProductList } from "@/global/constants/futures";
 import { getFuturesListApi } from "@/api/modules";
-import KLineChart from "./charts/KLineChart.vue";
 import { IKLineData } from "@/global/klineType";
 import dayjs from "dayjs";
 import _ from "lodash";
-import { useDark } from "@vueuse/core";
-const isDark = useDark();
+import KLineCentre from "./charts/KLineCentre.vue";
 
 interface ISettings {
   symbol: string;
@@ -23,31 +21,19 @@ const kLineData: IKLineData = reactive({
   period: KLineLevelEnum.Level_15M,
   symbol: settings.symbol,
   chanCentral: {},
-  chanPens: {},
+  chanPens: {
+    a0PenPointList: [],
+    a1PenPointList: [],
+    a2PenPointList: [],
+  },
   headers: [],
-});
-const kLineChartOptions = reactive({
-  layoutOptions: { background: { color: "#222" }, textColor: "#C3BCDB" },
-  gridOptions: {
-    vertLines: { color: "#444" },
-    horzLines: { color: "#444" },
-  },
-  priceScaleOptions: { borderVisible: false },
-  timeScaleOptions: { timeVisible: true, borderVisible: false },
-  candlestickSeriesOptions: {
-    upColor: "#ef5350",
-    downColor: "#26a69a",
-    borderVisible: false,
-    wickUpColor: "#ef5350",
-    wickDownColor: "#26a69a",
-  },
+  macd: [],
 });
 
 // 组件挂载时加载数据
 onMounted(() => {
   loadData(futuresProductList[0].value, kLineLevelList[0].value);
 });
-
 const loadData = (symbol: string, period: KLineLevelEnum) => {
   getFuturesListApi({
     symbol: symbol,
@@ -73,6 +59,32 @@ const loadData = (symbol: string, period: KLineLevelEnum) => {
         MA320: el.MA320,
       };
     });
+    kLineData.macd = data.macd.map((el: any) => {
+      return {
+        ...el,
+        time: dayjs(el.datetime).unix(),
+      };
+    });
+    kLineData.chanPens = {
+      a0PenPointList: data.chanPens["a0PenPointList"].map((el) => {
+        return {
+          time: dayjs(el.datetime).unix(),
+          value: el.price,
+        };
+      }),
+      a1PenPointList: data.chanPens["a1PenPointList"].map((el) => {
+        return {
+          time: dayjs(el.datetime).unix(),
+          value: el.price,
+        };
+      }),
+      a2PenPointList: data.chanPens["a2PenPointList"].map((el) => {
+        return {
+          time: dayjs(el.datetime).unix(),
+          value: el.price,
+        };
+      }),
+    };
   });
 };
 
@@ -85,28 +97,6 @@ watch(
   },
   { deep: true }
 );
-
-watch(isDark, (newValue) => {
-  if (newValue) {
-    kLineChartOptions.layoutOptions = {
-      background: { color: "#222" },
-      textColor: "#C3BCDB",
-    };
-    kLineChartOptions.gridOptions = {
-      vertLines: { color: "#444" },
-      horzLines: { color: "#444" },
-    };
-  } else {
-    kLineChartOptions.layoutOptions = {
-      background: { color: "#fff" },
-      textColor: "#000000",
-    };
-    kLineChartOptions.gridOptions = {
-      vertLines: { color: "#dcdfe6" },
-      horzLines: { color: "#dcdfe6" },
-    };
-  }
-});
 </script>
 
 <template>
@@ -130,21 +120,15 @@ watch(isDark, (newValue) => {
       </el-select>
     </div>
     <div class="chartContainer">
-      <KLineChart
-        autosize
-        :data="kLineData.kLineList"
-        :time-scale-options="kLineChartOptions.timeScaleOptions"
-        :price-scale-options="kLineChartOptions.priceScaleOptions"
-        :layout-options="kLineChartOptions.layoutOptions"
-        :grid-options="kLineChartOptions.gridOptions"
-        :candlestick-series-options="kLineChartOptions.candlestickSeriesOptions"
-      />
+      <KLineCentre :data="kLineData" autosize />
     </div>
   </div>
 </template>
 
 <style lang="less" scoped>
 .futuresItem {
+  display: flex;
+  flex-direction: column;
   .settings {
     display: flex;
     flex-direction: row;
@@ -156,7 +140,7 @@ watch(isDark, (newValue) => {
   }
 
   .chartContainer {
-    height: 30rem;
+    flex: 1;
   }
 }
 </style>
