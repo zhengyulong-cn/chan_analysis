@@ -20,7 +20,10 @@ const kLineData: IKLineData = reactive({
   kLineListCount: 0,
   period: KLineLevelEnum.Level_15M,
   symbol: settings.symbol,
-  chanCentral: {},
+  chanCentral: {
+    a0CentralList: [],
+    a1CentralList: [],
+  },
   chanPens: {
     a0PenPointList: [],
     a1PenPointList: [],
@@ -34,6 +37,11 @@ const kLineData: IKLineData = reactive({
 onMounted(() => {
   loadData(futuresProductList[0].value, kLineLevelList[0].value);
 });
+/**
+ * 加载图表数据
+ * @param symbol 品种
+ * @param period 级别，15min、60min、240min
+ */
 const loadData = (symbol: string, period: KLineLevelEnum) => {
   getFuturesListApi({
     symbol: symbol,
@@ -84,6 +92,10 @@ const loadData = (symbol: string, period: KLineLevelEnum) => {
           value: el.price,
         };
       }),
+    };
+    kLineData.chanCentral = {
+      a0CentralList: data.chanCentral["a0CentralList"],
+      a1CentralList: data.chanCentral["a1CentralList"],
     };
   });
 };

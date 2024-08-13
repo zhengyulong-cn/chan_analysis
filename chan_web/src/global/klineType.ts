@@ -36,6 +36,6 @@ export interface IKLineData {
   kLineListCount: number;
   kLineList: Array<IKLine>;
   chanPens: Record<"a0PenPointList" | "a1PenPointList" | "a2PenPointList", any[]>;
-  chanCentral: Record<string, any>;
+  chanCentral: Record<"a0CentralList" | "a1CentralList", any>;
   macd: Array<IKLineItem>;
 }

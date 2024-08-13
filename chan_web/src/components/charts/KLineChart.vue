@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { IKLineData } from "@/global/klineType";
-import { createChart, IChartApi, ISeriesApi } from "lightweight-charts";
+import { createChart, IChartApi, ISeriesApi, Time } from "lightweight-charts";
 import { onMounted, onUnmounted, PropType, ref, watch } from "vue";
 import { candlestickSeriesOptions, ICommonChartOptions, lineSeriesOptions } from "./config";
+import { Rectangle, RectangleDrawingToolOptions } from "@/global/plugins/lwc/rectangleDrawing";
+import dayjs from "dayjs";
 
 const props = defineProps({
   data: {
@@ -25,6 +27,8 @@ let kSeries: ISeriesApi<"Candlestick"> | null = null;
 let chanPenA0Series: ISeriesApi<"Line"> | null = null;
 let chanPenA1Series: ISeriesApi<"Line"> | null = null;
 let chanPenA2Series: ISeriesApi<"Line"> | null = null;
+let reactangleA0List: Rectangle[] = [];
+let reactangleA1List: Rectangle[] = [];
 onMounted(() => {
   chart = createChart(chartContainer.value, {
     ...props.commonChartOptions,
@@ -54,6 +58,11 @@ onMounted(() => {
     color: "red",
   });
   chanPenA2Series.setData(props.data.chanPens["a2PenPointList"]);
+  // 绘制中枢矩形区域
+  addRectangles(chanPenA0Series, props.data.chanCentral["a0CentralList"], reactangleA0List);
+  addRectangles(chanPenA1Series, props.data.chanCentral["a1CentralList"], reactangleA1List, {
+    fillColor: "rgba(0,255,255,0.37)",
+  });
   // 时间刻度自适应
   chart.timeScale().fitContent();
   if (props.autosize) {
@@ -70,6 +79,33 @@ onUnmounted(() => {
   }
   window.removeEventListener("resize", resizeHandler);
 });
+const clearRectangles = (series: ISeriesApi<"Line">, reactangleList: Rectangle[]) => {
+  for (const rect of reactangleList) {
+    series.detachPrimitive(rect);
+  }
+};
+const addRectangles = (
+  series: ISeriesApi<"Line">,
+  chanCentralList: any[],
+  reactangleList: Rectangle[],
+  options?: Partial<RectangleDrawingToolOptions>
+) => {
+  for (const item of chanCentralList) {
+    const timeRange = item.timeRange;
+    const priceRange = item.priceRange;
+    const reactangle = new Rectangle(
+      { time: dayjs(timeRange[0]).unix() as Time, price: priceRange[0] },
+      { time: dayjs(timeRange[1]).unix() as Time, price: priceRange[1] },
+      {
+        showLabels: false,
+        fillColor: "rgba(255, 255, 0, 0.3)",
+        ...options,
+      }
+    );
+    reactangleList.push(reactangle);
+    series.attachPrimitive(reactangle);
+  }
+};
 const fitContent = () => {
   if (!chart) return;
   chart.timeScale().fitContent();
@@ -83,6 +119,7 @@ const resizeHandler = () => {
   const dimensions = chartContainer.value.getBoundingClientRect();
   chart.resize(dimensions.width, dimensions.height);
 };
+
 watch(
   () => props.autosize,
   (enabled) => {
@@ -126,6 +163,24 @@ watch(
   (newData: any[]) => {
     if (!chanPenA2Series) return;
     chanPenA2Series.setData(newData);
+  }
+);
+watch(
+  () => props.data.chanCentral.a0CentralList,
+  (newData: any[]) => {
+    if (!chanPenA0Series) return;
+    clearRectangles(chanPenA0Series, reactangleA0List);
+    addRectangles(chanPenA0Series, newData, reactangleA0List);
+  }
+);
+watch(
+  () => props.data.chanCentral.a1CentralList,
+  (newData: any[]) => {
+    if (!chanPenA1Series) return;
+    clearRectangles(chanPenA1Series, reactangleA1List);
+    addRectangles(chanPenA1Series, newData, reactangleA1List, {
+      fillColor: "rgba(0,255,255,0.37)",
+    });
   }
 );
 </script>

@@ -112,43 +112,6 @@ def buildChanPens(histPrice: pd.DataFrame, *, type: str):
     return penList
 
 
-def mergeCentralList(centralList):
-    """
-    将有重叠的中枢进行合并
-    """
-    # 保证按照最左侧坐标排序正确
-    centralList.sort(key=lambda x: (x['idxRange'][0], x['priceRange'][0]))
-    mergedList = []
-    for interval in centralList:
-        # 如果没有重叠就不合并
-        if not mergedList:
-            mergedList.append(interval)
-        # 如果有重叠，返回True，没有则返回False
-        xOverlapJudge = mergedList[-1]['idxRange'][1] > interval['idxRange'][0]
-        yOverlapJudge = mergedList[-1]['priceRange'][1] > interval['priceRange'][0]
-        if not xOverlapJudge and not yOverlapJudge:
-            mergedList.append(interval)
-        elif not xOverlapJudge and yOverlapJudge:
-            mergedList.append(interval)
-        elif xOverlapJudge and yOverlapJudge:
-            # 与最后一个区间合并
-            last = mergedList.pop()
-            new_idx_range = [
-                min(last['idxRange'][0], interval['idxRange'][0]),
-                max(last['idxRange'][1], interval['idxRange'][1]),
-            ]
-            new_price_range = [
-                min(last['priceRange'][0], interval['priceRange'][0]),
-                max(last['priceRange'][1], interval['priceRange'][1]),
-            ]
-            mergedList.append(
-                {'idxRange': new_idx_range, 'priceRange': new_price_range}
-            )
-        else:
-            print("特殊情况：X轴重叠但Y轴不重叠")
-    return mergedList
-
-
 def getNextBigPenDirect(startIdx: int, endIdx: int, bigPenPointList: list):
     for i, curPenPoint in enumerate(bigPenPointList):
         if i + 1 > len(bigPenPointList) - 1:
@@ -164,19 +127,15 @@ def getNextBigPenDirect(startIdx: int, endIdx: int, bigPenPointList: list):
 
 def buildChanCentral(*, penPointList, bigPenPointList):
     """
-    根据历史价格数据、笔的点位、级别类型构建中枢
+    根据笔绘制中枢
 
     参数:
 
-    histPrice : pd.DataFrame 包含历史价格数据的DataFrame。
+    penPointList: 本级别笔
 
-    penPointList : list 笔的点位
+    bigPenPointList: 大一个级别笔
 
-    bigPenPointList : list 笔的点位
-
-    返回:
-    int
-        由函数计算得出的整数值。
+    返回: centralList 由函数计算得出的中枢点位
     """
     centralList = []
     for i, curPoint in enumerate(penPointList):
@@ -187,7 +146,7 @@ def buildChanCentral(*, penPointList, bigPenPointList):
         fourth2LastPoint = penPointList[i - 3]
         curPointIdx = curPoint["priceIdx"]
         fourth2LastPointIdx = fourth2LastPoint["priceIdx"]
-
+        # 大笔方向
         bigDirect = getNextBigPenDirect(
             fourth2LastPointIdx, curPointIdx, bigPenPointList
         )
@@ -196,34 +155,128 @@ def buildChanCentral(*, penPointList, bigPenPointList):
                 curPoint["price"] < fourth2LastPoint["price"]
                 and second2LastPoint["price"] > third2LastPoint["price"]
             ):
-                price = min(second2LastPoint["price"], fourth2LastPoint["price"])
-                minMaxPrice = max(curPoint["price"], third2LastPoint["price"])
-                centralList.append(
-                    {
-                        "idxRange": [
-                            fourth2LastPoint["priceIdx"],
-                            curPoint["priceIdx"],
-                        ],
-                        "priceRange": [minMaxPrice, price],
-                    }
+                uppperPrice = min(second2LastPoint["price"], fourth2LastPoint["price"])
+                lowerPrice = max(curPoint["price"], third2LastPoint["price"])
+                newCentral = {
+                    "idxRange": [
+                        fourth2LastPoint["priceIdx"],
+                        curPoint["priceIdx"],
+                    ],
+                    "timeRange": [
+                        fourth2LastPoint["datetime"],
+                        curPoint["datetime"],
+                    ],
+                    "priceRange": [lowerPrice, uppperPrice],
+                    "centralDirect": bigDirect,
+                }
+                if not centralList:
+                    centralList.append(newCentral)
+                    continue
+                oldCentral = centralList[len(centralList) - 1]
+                # 判断x轴(坐标/时间)是否重叠
+                xOverlapJudge = (
+                    oldCentral['idxRange'][1] > newCentral['idxRange'][0]
+                    and oldCentral['idxRange'][0] < newCentral['idxRange'][1]
                 )
+                # 判断y轴(价格)是否重叠
+                yOverlapJudge = (
+                    oldCentral['priceRange'][1] > newCentral['priceRange'][0]
+                    and oldCentral['priceRange'][0] < newCentral['priceRange'][1]
+                ) or (
+                    oldCentral['priceRange'][0] < newCentral['priceRange'][1]
+                    and oldCentral['priceRange'][1] > newCentral['priceRange'][0]
+                )
+                if not xOverlapJudge and not yOverlapJudge:
+                    centralList.append(newCentral)
+                elif not xOverlapJudge and yOverlapJudge:
+                    centralList.append(newCentral)
+                elif xOverlapJudge and yOverlapJudge:
+                    centralList.pop()
+                    newIdxRange = [
+                        oldCentral['idxRange'][0],
+                        newCentral['idxRange'][1],
+                    ]
+                    newPriceRange = [
+                        oldCentral['priceRange'][0],
+                        oldCentral['priceRange'][1],
+                    ]
+                    newTimeRange = [
+                        oldCentral['timeRange'][0],
+                        newCentral['timeRange'][1],
+                    ]
+                    mergedCentral = {
+                        "idxRange": newIdxRange,
+                        "timeRange": newTimeRange,
+                        "priceRange": newPriceRange,
+                        "centralDirect": bigDirect,
+                    }
+                    centralList.append(mergedCentral)
+                else:
+                    print("X轴重叠但Y轴不重叠，直接跳过")
         if bigDirect == -1:
             if (
                 curPoint["price"] > fourth2LastPoint["price"]
                 and second2LastPoint["price"] < third2LastPoint["price"]
             ):
-                price = min(curPoint["price"], third2LastPoint["price"])
-                minMaxPrice = max(second2LastPoint["price"], fourth2LastPoint["price"])
-                centralList.append(
-                    {
-                        "idxRange": [
-                            fourth2LastPoint["priceIdx"],
-                            curPoint["priceIdx"],
-                        ],
-                        "priceRange": [minMaxPrice, price],
-                    }
+                uppperPrice = min(curPoint["price"], third2LastPoint["price"])
+                lowerPrice = max(second2LastPoint["price"], fourth2LastPoint["price"])
+                newCentral = {
+                    "idxRange": [
+                        fourth2LastPoint["priceIdx"],
+                        curPoint["priceIdx"],
+                    ],
+                    "timeRange": [
+                        fourth2LastPoint["datetime"],
+                        curPoint["datetime"],
+                    ],
+                    "priceRange": [lowerPrice, uppperPrice],
+                    "centralDirect": bigDirect,
+                }
+                if not centralList:
+                    centralList.append(newCentral)
+                    continue
+                oldCentral = centralList[len(centralList) - 1]
+                # 判断x轴(坐标/时间)是否重叠
+                xOverlapJudge = (
+                    oldCentral['idxRange'][1] > newCentral['idxRange'][0]
+                    and oldCentral['idxRange'][0] < newCentral['idxRange'][1]
                 )
-    return mergeCentralList(centralList)
+                # 判断y轴(价格)是否重叠
+                yOverlapJudge = (
+                    oldCentral['priceRange'][1] > newCentral['priceRange'][0]
+                    and oldCentral['priceRange'][0] < newCentral['priceRange'][1]
+                ) or (
+                    oldCentral['priceRange'][0] < newCentral['priceRange'][1]
+                    and oldCentral['priceRange'][1] > newCentral['priceRange'][0]
+                )
+                if not xOverlapJudge and not yOverlapJudge:
+                    centralList.append(newCentral)
+                elif not xOverlapJudge and yOverlapJudge:
+                    centralList.append(newCentral)
+                elif xOverlapJudge and yOverlapJudge:
+                    centralList.pop()
+                    newIdxRange = [
+                        oldCentral['idxRange'][0],
+                        newCentral['idxRange'][1],
+                    ]
+                    newTimeRange = [
+                        oldCentral['timeRange'][0],
+                        newCentral['timeRange'][1],
+                    ]
+                    newPriceRange = [
+                        oldCentral['priceRange'][0],
+                        oldCentral['priceRange'][1],
+                    ]
+                    mergedCentral = {
+                        "idxRange": newIdxRange,
+                        "timeRange": newTimeRange,
+                        "priceRange": newPriceRange,
+                        "centralDirect": bigDirect,
+                    }
+                    centralList.append(mergedCentral)
+                else:
+                    print("X轴重叠但Y轴不重叠，直接跳过")
+    return centralList
 
 
 def buildChanBuyingSellingPoints(*, penPointList, centralList, bigPenPointList):
