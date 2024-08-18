@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { onMounted, onUnmounted, reactive, watch } from "vue";
+import { onMounted, reactive, watch } from "vue";
 import { KLineLevelEnum, kLineLevelList, futuresProductList } from "@/global/constants/futures";
-import { getFuturesListApi } from "@/api/modules";
+import { getFutureDataApi } from "@/api/modules";
 import { IKLineData } from "@/global/klineType";
 import dayjs from "dayjs";
 import _ from "lodash";
@@ -43,7 +43,7 @@ onMounted(() => {
  * @param period 级别，15min、60min、240min
  */
 const loadData = (symbol: string, period: KLineLevelEnum) => {
-  getFuturesListApi({
+  getFutureDataApi({
     symbol: symbol,
     period: period,
   }).then((res) => {

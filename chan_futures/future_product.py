@@ -20,7 +20,7 @@ class FutureProduct:
         self.symbol = symbol
         self.period = period
         self.histPrice = ak.futures_zh_minute_sina(
-            symbol=self.symbol,
+            symbol=symbol,
             period=str(period),
         )
         self.analysis()
@@ -111,7 +111,7 @@ class FutureProduct:
             cleanedRowList.append(cleanedRow)
         return cleanedRowList
 
-    def getPlainData(self):
+    def getResponseData(self):
         plainData = {}
         plainColumns = [
             "datetime",

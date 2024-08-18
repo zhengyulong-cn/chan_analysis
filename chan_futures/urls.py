@@ -1,6 +1,7 @@
 from django.urls import path
-from chan_futures.views import FuturesView
+from chan_futures.views import getFutureData, getfuturesListWarning
 
 urlpatterns = [
-    path("future_data/", FuturesView.as_view()),
+    path("future_data", getFutureData),
+    path("futures_list_warning", getfuturesListWarning),
 ]

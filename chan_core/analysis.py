@@ -99,12 +99,14 @@ def buildChanPens(histPrice: pd.DataFrame, *, type: str):
             penList.append(priceObj)
         else:
             lastPriceObj = penList[len(penList) - 1]
-            startIdx = lastPriceObj["priceIdx"]
+            # 开始的那天不算，避免日期重叠
+            startIdx = lastPriceObj["priceIdx"] + 1
             priceObj = getPenMaxMinPrice(histPrice, startIdx, endIdx, direct)
             penList.append(priceObj)
         if i == len(switchList) - 1:
             lastPriceObj = penList[len(penList) - 1]
-            startIdx = lastPriceObj["priceIdx"]
+            # 开始的那天不算，避免日期重叠
+            startIdx = lastPriceObj["priceIdx"] + 1
             priceObj = getPenMaxMinPrice(
                 histPrice, startIdx, len(histPrice), direct * -1
             )
@@ -112,11 +114,11 @@ def buildChanPens(histPrice: pd.DataFrame, *, type: str):
     return penList
 
 
-def getNextBigPenDirect(startIdx: int, endIdx: int, bigPenPointList: list):
-    for i, curPenPoint in enumerate(bigPenPointList):
-        if i + 1 > len(bigPenPointList) - 1:
+def getPenDirect(startIdx: int, endIdx: int, penPointList: list):
+    for i, curPenPoint in enumerate(penPointList):
+        if i + 1 > len(penPointList) - 1:
             continue
-        nextPenPoint = bigPenPointList[i + 1]
+        nextPenPoint = penPointList[i + 1]
         if curPenPoint['priceIdx'] <= startIdx and endIdx <= nextPenPoint['priceIdx']:
             if curPenPoint["type"] == "top":
                 return -1
@@ -147,9 +149,7 @@ def buildChanCentral(*, penPointList, bigPenPointList):
         curPointIdx = curPoint["priceIdx"]
         fourth2LastPointIdx = fourth2LastPoint["priceIdx"]
         # 大笔方向
-        bigDirect = getNextBigPenDirect(
-            fourth2LastPointIdx, curPointIdx, bigPenPointList
-        )
+        bigDirect = getPenDirect(fourth2LastPointIdx, curPointIdx, bigPenPointList)
         if bigDirect == 1:
             if (
                 curPoint["price"] < fourth2LastPoint["price"]
@@ -212,7 +212,8 @@ def buildChanCentral(*, penPointList, bigPenPointList):
                     }
                     centralList.append(mergedCentral)
                 else:
-                    print("X轴重叠但Y轴不重叠，直接跳过")
+                    # X轴重叠但Y轴不重叠，直接跳过
+                    pass
         if bigDirect == -1:
             if (
                 curPoint["price"] > fourth2LastPoint["price"]
@@ -275,89 +276,9 @@ def buildChanCentral(*, penPointList, bigPenPointList):
                     }
                     centralList.append(mergedCentral)
                 else:
-                    print("X轴重叠但Y轴不重叠，直接跳过")
+                    # X轴重叠但Y轴不重叠，直接跳过
+                    pass
     return centralList
-
-
-def buildChanBuyingSellingPoints(*, penPointList, centralList, bigPenPointList):
-    buyingSellingPointsList = []
-    for i, bigPenPoint in enumerate(bigPenPointList):
-        if i + 1 > len(bigPenPointList) - 1:
-            continue
-        nextBigPenPoint = bigPenPointList[i + 1]
-        bigStartIdx = bigPenPoint["priceIdx"]
-        bigEndIdx = nextBigPenPoint["priceIdx"]
-        bigDirect = 1 if nextBigPenPoint["type"] == "top" else -1
-        intervalList = []
-        for curPoint in penPointList:
-            curIdx = curPoint["priceIdx"]
-            curPrice = curPoint["price"]
-            curType = curPoint["type"]
-            if bigStartIdx <= curIdx and curIdx <= bigEndIdx:
-                if bigDirect == 1 and curType == "buttom":
-                    if not intervalList:
-                        intervalList.append(
-                            {
-                                "type": 1,
-                                "label": "一买",
-                                "priceIdx": curIdx,
-                                "price": curPrice,
-                                "datetime": curPoint["datetime"],
-                            }
-                        )
-                    elif len(intervalList) == 1:
-                        intervalList.append(
-                            {
-                                "type": 2,
-                                "label": "二买",
-                                "priceIdx": curIdx,
-                                "price": curPrice,
-                                "datetime": curPoint["datetime"],
-                            }
-                        )
-                    else:
-                        intervalList.append(
-                            {
-                                "type": 3,
-                                "label": "三买",
-                                "priceIdx": curIdx,
-                                "price": curPrice,
-                                "datetime": curPoint["datetime"],
-                            }
-                        )
-                if bigDirect == -1 and curType == "top":
-                    if not intervalList:
-                        intervalList.append(
-                            {
-                                "type": -1,
-                                "label": "一卖",
-                                "priceIdx": curIdx,
-                                "price": curPrice,
-                                "datetime": curPoint["datetime"],
-                            }
-                        )
-                    elif len(intervalList) == 1:
-                        intervalList.append(
-                            {
-                                "type": -2,
-                                "label": "二卖",
-                                "priceIdx": curIdx,
-                                "price": curPrice,
-                                "datetime": curPoint["datetime"],
-                            }
-                        )
-                    else:
-                        intervalList.append(
-                            {
-                                "type": -3,
-                                "label": "三卖",
-                                "priceIdx": curIdx,
-                                "price": curPrice,
-                                "datetime": curPoint["datetime"],
-                            }
-                        )
-        buyingSellingPointsList.append(intervalList)
-    return buyingSellingPointsList
 
 
 def MACD(data, fast_period=10, slow_period=20, singal_period=5):
@@ -371,20 +292,28 @@ def MACD(data, fast_period=10, slow_period=20, singal_period=5):
     return macdLine, signalLine, macdList
 
 
-def checkMACDCross(histPrice, stage: int):
+def checkMACDCross(
+    idx: int,
+    macdFastLine,
+    macdSlowLine,
+):
     """
-    crossType为1表示金叉，为-1表示死叉，为0表示没有
-    diffZeroAxis为1表示在DIFF>10时出现的，为-1表示在DIFF<-10出现的，为0表示在[-10,10]区间出现的
+    0表示无，1表示金叉，-1表示死叉
     """
-    DIFF, DEA, _MACD = MACD(histPrice["close"], stage // 2, stage, stage // 4)
-    if len(DIFF) < 2 or len(DEA) < 2:
-        return (0, 0)
-    latest_DIFF = DIFF[-1]
-    previous_DIFF = DIFF[-2]
-    latest_DEA = DEA[-1]
-    previous_DEA = DEA[-2]
+    if idx < 1:
+        return 0
+    latest_DIFF = macdFastLine[idx]
+    previous_DIFF = macdFastLine[idx - 1]
+    latest_DEA = macdSlowLine[idx]
+    previous_DEA = macdSlowLine[idx - 1]
+    if (
+        np.isnan(latest_DIFF)
+        or np.isnan(latest_DEA)
+        or np.isnan(previous_DIFF)
+        or np.isnan(previous_DEA)
+    ):
+        return 0
     crossType = 0
-    diffZeroAxis = 0
     # 金叉条件
     if latest_DIFF > latest_DEA and previous_DIFF <= previous_DEA:
         crossType = 1
@@ -393,56 +322,64 @@ def checkMACDCross(histPrice, stage: int):
         crossType = -1
     else:
         crossType = 0
-    if abs(latest_DIFF) <= 10:
-        diffZeroAxis = 0
-    else:
-        if latest_DIFF < 0:
-            diffZeroAxis = -1
-        else:
-            diffZeroAxis = 1
-    return (crossType, diffZeroAxis)
+    return crossType
 
 
-def operateWarn(direct_20: int, direct_80: int, direct_320: int) -> int:
-    """
-    为±2表示1h和4h趋势方向一致，15min回调
-    为±1表示1h和4h趋势方向一致，15min也一致或模糊，此时应该是持仓等等
-    为0表示1h和4h趋势方向不一致，不操作
-    """
-    if direct_80 == -1 and direct_320 == -1:
-        if direct_20 == 1:
-            return -2
-        else:
-            return -1
-    elif direct_80 == 1 and direct_320 == 1:
-        if direct_20 == -1:
-            return 2
-        else:
-            return 1
-    else:
+def checkFenxing(idx: int, histPrice: pd.DataFrame, penPointList):
+    lastStartPen = findlastStartPen(penPointList, idx)
+    lastStartPriceIdx = lastStartPen["priceIdx"]
+    if idx - lastStartPriceIdx > 10:
         return 0
-
-
-def macdCrossWarn(corssType: int, diffZeroAxis: int):
-    """
-    为±3表示金死叉
-    为2表示零轴上的金叉，为-2表示零轴下的死叉，都代表着原先趋势延续
-    为±1表示零轴附近的金死叉，是弱势金死叉
-    为0表示没有
-    """
-    if corssType == 1:
-        if diffZeroAxis == -1:
-            return 3
-        elif diffZeroAxis == 1:
-            return 2
-        else:
-            return 1
-    elif corssType == -1:
-        if diffZeroAxis == 1:
-            return -3
-        elif diffZeroAxis == -1:
-            return -2
-        else:
+    # 当前位置为下跌趋势
+    if lastStartPen["type"] == "top":
+        lowPrice = histPrice.iloc[lastStartPriceIdx - 1]["low"]
+        curPrice = histPrice.iloc[idx]["close"]
+        if curPrice <= lowPrice:
             return -1
-    else:
-        return 0
+        else:
+            return 0
+    if lastStartPen["type"] == "buttom":
+        highPrice = histPrice.iloc[lastStartPriceIdx - 1]["high"]
+        curPrice = histPrice.iloc[idx]["close"]
+        if curPrice >= highPrice:
+            return 1
+        else:
+            return 0
+    return 0
+
+
+def findlastStartPen(penPointList, curIdx: int):
+    firstPen = penPointList[0]
+    lastPen = penPointList[len(penPointList) - 1]
+    if curIdx < firstPen["priceIdx"]:
+        return firstPen
+    if curIdx > lastPen["priceIdx"]:
+        return lastPen
+    for i in range(len(penPointList)):
+        if i + 1 > len(penPointList) - 1:
+            return penPointList[i]
+        curPen = penPointList[i]
+        nextPen = penPointList[i + 1]
+        if curIdx >= curPen["priceIdx"] and curIdx < nextPen["priceIdx"]:
+            return curPen
+    return None
+
+
+def statisticsTradeSignalWarning(histPrice: pd.DataFrame, *, penPointList):
+    signalList = []
+    for i in range(len(histPrice) - 20, len(histPrice)):
+        datetime = histPrice.iloc[i]["datetime"]
+        crossType = checkMACDCross(
+            i,
+            histPrice["macdFastLine20"],
+            histPrice["macdSlowLine20"],
+        )
+        fenxingType = checkFenxing(i, histPrice, penPointList)
+        signalList.append(
+            {
+                "datetime": datetime,
+                "crossType": crossType,
+                "fenxingType": fenxingType,
+            }
+        )
+    return signalList

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IKLineData } from "@/global/klineType";
-import { onBeforeUpdate, onMounted, watch, PropType, ref, onUpdated } from "vue";
+import { onMounted, PropType, ref } from "vue";
 import { commonChartOptions } from "./config";
 import KLineChart from "./KLineChart.vue";
 import MACDChart from "./MACDChart.vue";

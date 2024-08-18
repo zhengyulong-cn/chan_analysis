@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IKLineData } from "@/global/klineType";
-import { createChart, IChartApi, ISeriesApi, Time } from "lightweight-charts";
+import { createChart, IChartApi, ISeriesApi, SeriesMarker, Time } from "lightweight-charts";
 import { onMounted, onUnmounted, PropType, ref, watch } from "vue";
 import { candlestickSeriesOptions, ICommonChartOptions, lineSeriesOptions } from "./config";
 import { Rectangle, RectangleDrawingToolOptions } from "@/global/plugins/lwc/rectangleDrawing";
