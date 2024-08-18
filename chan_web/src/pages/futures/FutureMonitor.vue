@@ -48,9 +48,11 @@ const getFuturesListWarning = () => {
           data: tableData.value,
         })
       );
+      ElMessage.success("获取开平仓监控数据成功");
     })
     .catch((err) => {
       ElMessage.error("获取开平仓监控数据失败");
+      console.error(err);
     })
     .finally(() => {
       isLoading.value = false;
@@ -60,78 +62,124 @@ const getClassifiedTableData = (tableData: IFuturesMonitorTable) => {
   const classifiedList: any[] = [];
   for (const item of tableData) {
     const a0SignalList = item.a0SignalList;
-    const a1anda2DirectIsSame = item.a1Direct === item.a2Direct;
     const product = futuresProductList.find((el) => el.value === item.symbol)!;
     const symbolName = product.label;
-    if (a0SignalList[a0SignalList.length - 1].fenxingType !== 0) {
+    let currentCrossType = a0SignalList[a0SignalList.length - 1].crossType;
+    let currentFenxingType = a0SignalList[a0SignalList.length - 1].fenxingType;
+    if (currentFenxingType !== 0) {
       const lastIdx = a0SignalList.findLastIndex((el) => el.crossType !== 0);
-      if (Math.abs(lastIdx - a0SignalList.length) < 8) {
+      if (lastIdx < 0) {
+        continue;
+      }
+      const lastCrossType = a0SignalList[lastIdx].crossType;
+      if (Math.abs(lastIdx - a0SignalList.length) < 8 && lastCrossType === currentFenxingType) {
         classifiedList.push({
           symbol: item.symbol,
           symbolName: symbolName,
           stage: "A0",
-          message:
-            "出现MACD金死叉+强势顶底分型开仓/平仓判定" +
-            (a1anda2DirectIsSame ? "【A1和A2级别趋势方向相同】" : ""),
-          a1anda2DirectIsSame: a1anda2DirectIsSame,
+          warnType: currentFenxingType,
         });
       }
     }
-    if (a0SignalList[a0SignalList.length - 1].crossType !== 0) {
+    if (currentCrossType !== 0) {
       const lastIdx = a0SignalList.findLastIndex((el) => el.fenxingType !== 0);
-      if (Math.abs(lastIdx - a0SignalList.length) < 8) {
+      if (lastIdx < 0) {
+        continue;
+      }
+      const lastFenxingType = a0SignalList[lastIdx].fenxingType;
+      if (Math.abs(lastIdx - a0SignalList.length) < 8 && lastFenxingType === currentCrossType) {
         classifiedList.push({
           symbol: item.symbol,
           symbolName: symbolName,
           stage: "A0",
-          message:
-            "出现MACD金死叉+强势顶底分型开仓/平仓判定" +
-            (a1anda2DirectIsSame ? "【A1和A2级别趋势方向相同】" : ""),
-          a1anda2DirectIsSame: a1anda2DirectIsSame,
+          warnType: currentCrossType,
         });
       }
     }
     const a1SignalList = item.a1SignalList;
-    if (a1SignalList[a1SignalList.length - 1].fenxingType !== 0) {
+    currentCrossType = a1SignalList[a1SignalList.length - 1].crossType;
+    currentFenxingType = a1SignalList[a1SignalList.length - 1].fenxingType;
+    if (currentFenxingType !== 0) {
       const lastIdx = a1SignalList.findLastIndex((el) => el.crossType !== 0);
-      if (Math.abs(lastIdx - a1SignalList.length) < 8) {
+      if (lastIdx < 0) {
+        continue;
+      }
+      const lastCrossType = a1SignalList[lastIdx].crossType;
+      if (Math.abs(lastIdx - a1SignalList.length) < 8 && lastCrossType === currentFenxingType) {
         classifiedList.push({
           symbol: item.symbol,
           symbolName: symbolName,
           stage: "A1",
-          message: "出现MACD金死叉+强势顶底分型开仓/平仓判定",
+          warnType: currentFenxingType,
         });
       }
     }
-    if (a1SignalList[a1SignalList.length - 1].crossType !== 0) {
+    if (currentCrossType !== 0) {
       const lastIdx = a1SignalList.findLastIndex((el) => el.fenxingType !== 0);
-      if (Math.abs(lastIdx - a1SignalList.length) < 8) {
+      if (lastIdx < 0) {
+        continue;
+      }
+      const lastFenxingType = a1SignalList[lastIdx].fenxingType;
+      if (Math.abs(lastIdx - a1SignalList.length) < 8 && lastFenxingType === currentCrossType) {
         classifiedList.push({
           symbol: item.symbol,
           symbolName: symbolName,
           stage: "A1",
-          message: "出现MACD金死叉+强势顶底分型开仓/平仓判定",
+          warnType: currentCrossType,
         });
       }
     }
   }
   return classifiedList;
 };
+const getSameA1AndA2DirectData = (tableData: IFuturesMonitorTable) => {
+  const sameDirectList: any[] = [];
+  for (const item of tableData) {
+    const product = futuresProductList.find((el) => el.value === item.symbol)!;
+    const symbolName = product.label;
+    if (item.a1Direct === item.a2Direct) {
+      sameDirectList.push({
+        symbol: item.symbol,
+        symbolName: symbolName,
+        direct: item.a1Direct,
+      });
+    }
+  }
+  return sameDirectList;
+};
+const getOperateList = (classifiedList, sameDirectList) => {
+  const operateList: any[] = [];
+  for (const sameDirectItem of sameDirectList) {
+    const classifiedItem = classifiedList.find(
+      (el) => el.symbol === sameDirectItem.symbol && el.stage === "A0"
+    );
+    if (classifiedItem) {
+      operateList.push({
+        symbol: sameDirectItem.symbol,
+        symbolName: sameDirectItem.symbolName,
+        direct: sameDirectItem.a1Direct,
+        warnType: classifiedItem.warnType,
+      });
+    }
+  }
+  return operateList;
+};
 const classifiedList = computed(() => {
   return getClassifiedTableData(tableData.value);
 });
-watch(classifiedList, (newList) => {
+const sameDirectList = computed(() => {
+  return getSameA1AndA2DirectData(tableData.value);
+});
+const operateList = computed(() => {
+  return getOperateList(classifiedList.value, sameDirectList.value);
+});
+watch(operateList, (newList) => {
   Notification.requestPermission().then((result) => {
     if (result === "granted") {
-      const arr = newList
-        .filter((el) => el.a1anda2DirectIsSame)
-        .map((el) => {
-          const product = futuresProductList.find((item) => item.value === el.symbol);
-          if (!product) return;
-          return product.label;
+      newList.length > 0 &&
+        new Notification("开平仓预警", {
+          body: `【${newList.map((el) => el.symbolName).join("、")}】有开仓/平仓机会`,
         });
-      arr.length > 0 &&
-        new Notification("开平仓预警", { body: `【${arr.join("、")}】有开仓/平仓机会` });
     }
   });
 });
@@ -147,16 +195,40 @@ watch(classifiedList, (newList) => {
       <div class="futuresMonitorTable">
         <FuturesMonitorTable :table-data="tableData" :loading="isLoading" />
       </div>
-      <div v-if="classifiedList.length > 0" class="warningResult">
-        <div
-          v-for="(item, index) in classifiedList"
-          :key="index"
-          :style="{ color: item.a1anda2DirectIsSame ? 'red' : '' }"
-        >
-          {{ item.symbolName }}({{ item.symbol }})-{{ item.stage }}级别：{{ item.message }}
+      <div class="warningWrapper">
+        <div class="condition">
+          <div v-if="classifiedList.length > 0" v-loading="isLoading">
+            <div v-for="(item, index) in classifiedList" :key="index">
+              {{ item.symbolName }}({{ item.symbol }}) - {{ item.stage }} -
+              {{ item.warnType === 1 ? "做多/平空" : "做空/平多" }}
+            </div>
+          </div>
+          <div v-else>无</div>
+          <div v-if="sameDirectList.length > 0" v-loading="isLoading">
+            <div v-for="(item, index) in sameDirectList" :key="index">
+              {{ item.symbolName }}({{ item.symbol }})-{{
+                item.directText === 1 ? "上涨" : "下跌"
+              }}趋势
+            </div>
+          </div>
+          <div v-else>无</div>
+        </div>
+        <div class="arrowDownIcons">
+          <el-icon><Bottom /></el-icon>
+          <el-icon><Bottom /></el-icon>
+        </div>
+        <div class="warningResult" v-loading="isLoading">
+          <h2 class="title">A0级别开仓/平仓信号</h2>
+          <div v-if="operateList.length > 0">
+            <div v-for="(item, index) in operateList" :key="index">
+              {{ item.symbolName }}({{ item.symbol }}) -
+              {{ item.directText === 1 ? "上涨" : "下跌" }}趋势 -
+              {{ item.warnType === 1 ? "做多/平空" : "做空/平多" }}
+            </div>
+          </div>
+          <div v-else>无</div>
         </div>
       </div>
-      <div v-else class="warningResult">无</div>
     </section>
   </div>
 </template>
@@ -191,8 +263,41 @@ watch(classifiedList, (newList) => {
       flex: 2;
       overflow: auto;
     }
-    .warningResult {
+    .warningWrapper {
       flex: 1;
+      display: flex;
+      flex-direction: column;
+      row-gap: 0.5rem;
+      .condition {
+        display: flex;
+        flex-direction: row;
+        column-gap: 0.5rem;
+        height: 25rem;
+        & > div {
+          flex: 1;
+          border: 1px solid red;
+          border-radius: 0.5rem;
+          padding: 0.5rem;
+          overflow: auto;
+        }
+      }
+      .arrowDownIcons {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+        height: 1.5rem;
+      }
+      .warningResult {
+        flex: 1;
+        border: 1px solid red;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        overflow: auto;
+        .title {
+          font-size: 1.5rem;
+          font-weight: bold;
+        }
+      }
     }
   }
 }
