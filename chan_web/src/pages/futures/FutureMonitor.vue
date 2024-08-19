@@ -206,9 +206,7 @@ watch(operateList, (newList) => {
           <div v-else>无</div>
           <div v-if="sameDirectList.length > 0" v-loading="isLoading">
             <div v-for="(item, index) in sameDirectList" :key="index">
-              {{ item.symbolName }}({{ item.symbol }})-{{
-                item.directText === 1 ? "上涨" : "下跌"
-              }}趋势
+              {{ item.symbolName }}({{ item.symbol }})-{{ item.direct === 1 ? "上涨" : "下跌" }}趋势
             </div>
           </div>
           <div v-else>无</div>
@@ -222,7 +220,7 @@ watch(operateList, (newList) => {
           <div v-if="operateList.length > 0">
             <div v-for="(item, index) in operateList" :key="index">
               {{ item.symbolName }}({{ item.symbol }}) -
-              {{ item.directText === 1 ? "上涨" : "下跌" }}趋势 -
+              {{ item.direct === 1 ? "上涨" : "下跌" }}趋势 -
               {{ item.warnType === 1 ? "做多/平空" : "做空/平多" }}
             </div>
           </div>
