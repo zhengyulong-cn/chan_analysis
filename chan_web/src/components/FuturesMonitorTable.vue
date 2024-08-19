@@ -25,27 +25,19 @@ const formatSymbolText = (symbol: string) => {
     class="futuresMonitorTable"
     v-loading="props.loading"
   >
-    <el-table-column prop="symbol" label="合约" width="120">
+    <el-table-column prop="symbol" label="合约" fixed="left">
       <template #default="scope">
         <div>{{ formatSymbolText(scope.row.symbol) }}</div>
       </template>
     </el-table-column>
-    <el-table-column prop="a0Direct" label="A0方向" width="90">
+    <el-table-column label="趋势方向" width="90">
       <template #default="scope">
-        <div>{{ scope.row.a0Direct === 1 ? "上涨" : "下跌" }}</div>
+        <div>A0: {{ scope.row.a0Direct === 1 ? "上涨" : "下跌" }}</div>
+        <div>A1: {{ scope.row.a1Direct === 1 ? "上涨" : "下跌" }}</div>
+        <div>A2: {{ scope.row.a2Direct === 1 ? "上涨" : "下跌" }}</div>
       </template>
     </el-table-column>
-    <el-table-column prop="a1Direct" label="A1方向" width="90">
-      <template #default="scope">
-        <div>{{ scope.row.a1Direct === 1 ? "上涨" : "下跌" }}</div>
-      </template>
-    </el-table-column>
-    <el-table-column prop="a2Direct" label="A2方向" width="90">
-      <template #default="scope">
-        <div>{{ scope.row.a2Direct === 1 ? "上涨" : "下跌" }}</div>
-      </template>
-    </el-table-column>
-    <el-table-column prop="a0SignalList" label="A0信号">
+    <el-table-column prop="a0SignalList" label="A0信号" width="300">
       <template #default="scope">
         <div v-for="item in scope.row.a0SignalList" :key="item.datetime" class="signalListBox">
           <span>{{ item.datetime }}</span>
@@ -56,7 +48,7 @@ const formatSymbolText = (symbol: string) => {
         </div>
       </template>
     </el-table-column>
-    <el-table-column prop="a1SignalList" label="A1信号">
+    <el-table-column prop="a1SignalList" label="A1信号" width="300">
       <template #default="scope">
         <div v-for="item in scope.row.a1SignalList" :key="item.datetime" class="signalListBox">
           <span>{{ item.datetime }}</span>
