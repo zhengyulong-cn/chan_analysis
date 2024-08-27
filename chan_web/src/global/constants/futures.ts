@@ -27,11 +27,6 @@ export const futuresProductList = [
   { label: "白糖主连", value: "SR0" },
   { label: "棉花主连", value: "CF0" },
   { label: "燃油主连", value: "FU0" },
-  { label: "氧化铝主连", value: "AO0" },
   { label: "沪银主连", value: "AG0" },
-  { label: "沪镍主连", value: "NI0" },
   { label: "沪铝主连", value: "AL0" },
-  { label: "沪锌主连", value: "Zn0" },
-  { label: "沪铅主连", value: "Pb0" },
-  { label: "橡胶主连", value: "RU0" },
 ];

@@ -79,7 +79,7 @@ const syncCrosshair = (chart, series, time, price) => {
       autosize
       :common-chart-options="commonChartOptions"
     />
-    <MACDChart
+    <!-- <MACDChart
       ref="macdChart20Ref"
       :data="props.data"
       autosize
@@ -92,7 +92,7 @@ const syncCrosshair = (chart, series, time, price) => {
       autosize
       :common-chart-options="commonChartOptions"
       :stage="80"
-    />
+    /> -->
   </div>
 </template>
 

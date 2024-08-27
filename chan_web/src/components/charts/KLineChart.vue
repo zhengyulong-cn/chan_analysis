@@ -191,7 +191,7 @@ watch(
 
 <style lang="less" scoped>
 .lw-chart {
-  height: 30rem;
+  height: 44rem;
   position: relative;
 }
 </style>
